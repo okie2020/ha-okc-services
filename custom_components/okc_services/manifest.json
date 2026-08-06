@@ -1,0 +1,11 @@
+{
+  "domain": "okc_services",
+  "name": "OKC Services",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://data.okc.gov/",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}

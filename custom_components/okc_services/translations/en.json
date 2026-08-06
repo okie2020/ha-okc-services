@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OKC Services",
+        "description": "Enter your Oklahoma City service address. It is matched against City of Oklahoma City open data to find your trash, recycling and bulky waste collection zones.",
+        "data": {
+          "address": "Home address"
+        },
+        "data_description": {
+          "address": "For example: 200 N Walker Ave, Oklahoma City, OK 73102"
+        }
+      },
+      "confirm": {
+        "title": "Confirm your address",
+        "description": "Matched address:\n**{address}**\n\nCoordinates: `{latitude}, {longitude}`\n\nIs this correct?"
+      }
+    },
+    "error": {
+      "address_not_found": "That address could not be found. Try including the city, state and ZIP code.",
+      "outside_service_area": "That address is not inside any City of Oklahoma City collection zone. Trash service there is likely provided by another municipality or a private hauler.",
+      "cannot_connect": "Could not reach the Oklahoma City open data services. Please try again."
+    },
+    "abort": {
+      "already_configured": "This address is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Emergency response map",
+        "description": "Control which live fire and police responses appear on your map.",
+        "data": {
+          "incidents_enabled": "Show emergency responses on the map",
+          "incident_radius": "Radius around your home",
+          "incident_types": "Only show these call types (leave empty for all)"
+        },
+        "data_description": {
+          "incident_types": "Matching is partial, so \"Fire\" also matches \"Fire: Elevator Emergency\"."
+        }
+      }
+    }
+  }
+}
