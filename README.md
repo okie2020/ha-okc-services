@@ -17,7 +17,7 @@ No API key or account is required.
 ### HACS (recommended)
 
 1. In Home Assistant go to **HACS → ⋮ → Custom repositories**.
-2. Add `https://github.com/braden2113/ha-okc-services` with type **Integration**.
+2. Add `https://github.com/okie2020/ha-okc-services` with type **Integration**.
 3. Find **OKC Services** in the HACS list and click **Download**.
 4. Restart Home Assistant.
 
