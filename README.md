@@ -208,3 +208,11 @@ in `const.py`.
 
 Data provided by the City of Oklahoma City open data portal. Verify anything
 critical against [My Trash Day](https://www.okc.gov/Services/Water-Trash-Recycling/Trash-Services/My-Trash-Day).
+
+## Icon
+
+The integration ships its own brand icon in `custom_components/okc_services/brand/`.
+Home Assistant 2026.3 and later load brand images from there directly, and local
+images take priority over the brands CDN, so no submission to
+`home-assistant/brands` is needed. On older versions the generic placeholder is
+shown instead.
