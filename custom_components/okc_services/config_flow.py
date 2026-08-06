@@ -42,8 +42,13 @@ from .const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_MATCHED_ADDRESS,
+    CONF_WORK_ZONE_RADIUS,
+    CONF_WORK_ZONE_TYPES,
+    CONF_WORK_ZONES_ENABLED,
     DEFAULT_INCIDENT_RADIUS,
     DEFAULT_INCIDENTS_ENABLED,
+    DEFAULT_WORK_ZONE_RADIUS,
+    DEFAULT_WORK_ZONES_ENABLED,
     DOMAIN,
     TRASH_HORIZON_DAYS,
 )
@@ -64,8 +69,24 @@ INCIDENT_TYPE_CHOICES = [
 ]
 
 
+# The Worktype vocabulary the city publishes. Matching is substring based, so
+# "Street" covers both "Street Repair" and "Street/Sidewalk Repair".
+WORK_ZONE_TYPE_CHOICES = [
+    "Road Construction",
+    "Street Repair",
+    "Sidewalk Repair",
+    "Street/Sidewalk Repair",
+    "Driveway Repair",
+    "Utility Maintenance and Repair",
+    "Building Construction",
+    "Building Demolition",
+    "Dumpster/Storage",
+    "Miscellaneous",
+]
+
+
 def incident_options_schema(options: Mapping[str, Any]) -> vol.Schema:
-    """Build the incident options schema, defaulted from existing options.
+    """Build the options schema, defaulted from existing options.
 
     Shared so the initial setup and the later options flow always offer the
     same choices.
@@ -94,6 +115,35 @@ def incident_options_schema(options: Mapping[str, Any]) -> vol.Schema:
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=INCIDENT_TYPE_CHOICES,
+                    multiple=True,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_WORK_ZONES_ENABLED,
+                default=options.get(
+                    CONF_WORK_ZONES_ENABLED, DEFAULT_WORK_ZONES_ENABLED
+                ),
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_WORK_ZONE_RADIUS,
+                default=options.get(CONF_WORK_ZONE_RADIUS, DEFAULT_WORK_ZONE_RADIUS),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0.5,
+                    max=30,
+                    step=0.5,
+                    unit_of_measurement="mi",
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_WORK_ZONE_TYPES,
+                default=list(options.get(CONF_WORK_ZONE_TYPES) or []),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=WORK_ZONE_TYPE_CHOICES,
                     multiple=True,
                     custom_value=True,
                     mode=SelectSelectorMode.DROPDOWN,

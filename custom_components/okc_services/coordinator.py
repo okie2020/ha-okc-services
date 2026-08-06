@@ -9,17 +9,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import Incident, OKCApiError, OKCClient, ScheduleData
+from .api import Incident, OKCApiError, OKCClient, ScheduleData, WorkZone
 from .const import (
     CONF_INCIDENT_RADIUS,
     CONF_INCIDENT_TYPES,
     CONF_LATITUDE,
     CONF_LONGITUDE,
+    CONF_WORK_ZONE_RADIUS,
+    CONF_WORK_ZONE_TYPES,
     DEFAULT_INCIDENT_RADIUS,
+    DEFAULT_WORK_ZONE_RADIUS,
     DOMAIN,
     INCIDENT_SCAN_INTERVAL_MINUTES,
     SCHEDULE_SCAN_INTERVAL_HOURS,
     TRASH_HORIZON_DAYS,
+    WORK_ZONE_SCAN_INTERVAL_MINUTES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,3 +92,36 @@ class OKCIncidentCoordinator(DataUpdateCoordinator[list[Incident]]):
             )
         except OKCApiError as err:
             raise UpdateFailed(f"Could not refresh emergency responses: {err}") from err
+
+
+class OKCWorkZoneCoordinator(DataUpdateCoordinator[list[WorkZone]]):
+    """Polls the active street work zone feed."""
+
+    def __init__(
+        self, hass: HomeAssistant, entry: ConfigEntry, client: OKCClient
+    ) -> None:
+        """Initialise the work zone coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_work_zones",
+            update_interval=timedelta(minutes=WORK_ZONE_SCAN_INTERVAL_MINUTES),
+            config_entry=entry,
+        )
+        self._client = client
+        self._entry = entry
+        self._latitude = entry.data[CONF_LATITUDE]
+        self._longitude = entry.data[CONF_LONGITUDE]
+
+    async def _async_update_data(self) -> list[WorkZone]:
+        options = self._entry.options
+        radius = options.get(CONF_WORK_ZONE_RADIUS, DEFAULT_WORK_ZONE_RADIUS)
+        raw_types = options.get(CONF_WORK_ZONE_TYPES) or []
+        work_types = [t for t in raw_types if t] or None
+
+        try:
+            return await self._client.async_get_work_zones(
+                self._latitude, self._longitude, radius, work_types
+            )
+        except OKCApiError as err:
+            raise UpdateFailed(f"Could not refresh work zones: {err}") from err

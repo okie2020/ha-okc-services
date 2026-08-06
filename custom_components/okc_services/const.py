@@ -15,8 +15,17 @@ CONF_INCIDENT_RADIUS: Final = "incident_radius"
 CONF_INCIDENT_TYPES: Final = "incident_types"
 CONF_INCIDENTS_ENABLED: Final = "incidents_enabled"
 
+CONF_WORK_ZONE_RADIUS: Final = "work_zone_radius"
+CONF_WORK_ZONE_TYPES: Final = "work_zone_types"
+CONF_WORK_ZONES_ENABLED: Final = "work_zones_enabled"
+
 DEFAULT_INCIDENT_RADIUS: Final = 10.0  # miles
 DEFAULT_INCIDENTS_ENABLED: Final = True
+
+# Work zones are long lived and dense - the city publishes around 190 at once
+# - so they default to a tighter radius than the transient incident feed.
+DEFAULT_WORK_ZONE_RADIUS: Final = 3.0  # miles
+DEFAULT_WORK_ZONES_ENABLED: Final = True
 
 # Distances are computed on a sphere in kilometres, then reported in miles
 # because this integration only ever serves Oklahoma City addresses.
@@ -46,6 +55,11 @@ LAYER_EMERGENCY: Final = (
     "OpenData/Public_Safety",
     0,
 )
+LAYER_WORK_ZONES: Final = (
+    "ead80c5e4e4e4c719359217f704a0c4c",
+    "OpenData/Transportation",
+    5,
+)
 
 SERVICE_TRASH: Final = "trash"
 SERVICE_RECYCLE: Final = "recycle"
@@ -57,9 +71,11 @@ SERVICE_LABELS: Final = {
     SERVICE_BULKY: "Bulky Waste",
 }
 
-# Schedules change rarely; incidents are a live feed.
+# Schedules change rarely; incidents are a live feed. Work zones sit between
+# the two - they are dated projects, not events, so hourly is plenty.
 SCHEDULE_SCAN_INTERVAL_HOURS: Final = 6
 INCIDENT_SCAN_INTERVAL_MINUTES: Final = 5
+WORK_ZONE_SCAN_INTERVAL_MINUTES: Final = 60
 
 # How far ahead the calendar synthesises weekly trash pickups.
 TRASH_HORIZON_DAYS: Final = 120

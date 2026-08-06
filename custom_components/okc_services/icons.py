@@ -85,6 +85,16 @@ _ALERT_CIRCLE = (
     "0 22,12A10,10 0 0,0 12,2Z"
 )
 
+# mdi:traffic-cone
+_TRAFFIC_CONE = "M17 15L18 19H21V22H3V19H6L7 15H17M15 8L16 12H8L9 8H15M13 1L14 5H10L11 1H13Z"
+
+# mdi:sign-caution
+_SIGN_CAUTION = (
+    "M2,3H22V13H18V21H16V13H8V21H6V13H2V3M18.97,11L20,9.97V7.15L16.15,11H18.97M13.32,"
+    "11L19.32,5H16.5L10.5,11H13.32M7.66,11L13.66,5H10.83L4.83,11H7.66M5.18,5L4,6.18V9L8,"
+    "5H5.18Z"
+)
+
 # Matched as substrings against Call_Type, most specific first, so
 # "Fire: Elevator Emergency" lands on the fire icon and "Injury Accident" is
 # tested before the broader "accident".
@@ -99,6 +109,29 @@ _ICON_RULES: tuple[tuple[str, str, str], ...] = (
 )
 
 _FALLBACK = (_ALERT_CIRCLE, "#757575")
+
+# Work zones are coloured by how much they actually block, not by work type,
+# because that is what matters when you are deciding whether to drive that way.
+_ROAD_CLOSED = (_SIGN_CAUTION, "#c62828")
+_LANE_CLOSED = (_TRAFFIC_CONE, "#ef6c00")
+_SIDEWALK_CLOSED = (_TRAFFIC_CONE, "#f9a825")
+_WORK_ZONE_DEFAULT = (_TRAFFIC_CONE, "#546e7a")
+
+
+def _marker(path: str, colour: str) -> str:
+    """Build a circular marker image as a base64 data URI.
+
+    The icon is scaled to 60% and centred, leaving a coloured ring around it
+    so the marker still reads as a marker at map zoom levels.
+    """
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+        f'<circle cx="12" cy="12" r="12" fill="{colour}"/>'
+        f'<g transform="translate(4.8 4.8) scale(0.6)">'
+        f'<path d="{path}" fill="#ffffff"/></g></svg>'
+    )
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
 
 
 @lru_cache(maxsize=32)
@@ -115,13 +148,21 @@ def incident_picture(call_type: str) -> str:
             path, colour = candidate_path, candidate_colour
             break
 
-    # The icon is scaled to 60% and centred, leaving a coloured ring around it
-    # so the marker still reads as a marker at map zoom levels.
-    svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
-        f'<circle cx="12" cy="12" r="12" fill="{colour}"/>'
-        f'<g transform="translate(4.8 4.8) scale(0.6)">'
-        f'<path d="{path}" fill="#ffffff"/></g></svg>'
-    )
-    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
-    return f"data:image/svg+xml;base64,{encoded}"
+    return _marker(path, colour)
+
+
+@lru_cache(maxsize=8)
+def work_zone_picture(
+    road_closed: bool, lane_closed: bool, sidewalk_closed: bool
+) -> str:
+    """Return a data URI for a work zone marker, keyed on what it blocks."""
+    if road_closed:
+        path, colour = _ROAD_CLOSED
+    elif lane_closed:
+        path, colour = _LANE_CLOSED
+    elif sidewalk_closed:
+        path, colour = _SIDEWALK_CLOSED
+    else:
+        path, colour = _WORK_ZONE_DEFAULT
+
+    return _marker(path, colour)

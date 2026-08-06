@@ -23,6 +23,7 @@ from .const import (
     LAYER_RECYCLE_DATES,
     LAYER_RECYCLE_ZONES,
     LAYER_TRASH_ZONES,
+    LAYER_WORK_ZONES,
     SERVICE_BULKY,
     SERVICE_RECYCLE,
     SERVICE_TRASH,
@@ -83,6 +84,41 @@ class Incident:
 
 
 @dataclass
+class WorkZone:
+    """An active street work zone."""
+
+    # A single work zone number can cover several points along one project, so
+    # identity is the layer's OBJECTID and the WZ number is carried alongside.
+    uid: str
+    number: str
+    work_type: str
+    location: str
+    start_date: date | None
+    end_date: date | None
+    road_closed: bool
+    lane_closed: bool
+    sidewalk_closed: bool
+    right_of_way_work: bool
+    directions: list[str]
+    latitude: float
+    longitude: float
+    distance_mi: float
+
+    @property
+    def impact(self) -> str:
+        """Summarise the closure in one word, worst first."""
+        if self.road_closed:
+            return "road closed"
+        if self.lane_closed:
+            return "lane closed"
+        if self.sidewalk_closed:
+            return "sidewalk closed"
+        if self.right_of_way_work:
+            return "right-of-way work"
+        return "no closure"
+
+
+@dataclass
 class ScheduleData:
     """Collection schedule for a single property."""
 
@@ -126,6 +162,26 @@ def _parse_reported_time(raw: str | None) -> datetime | None:
     except ValueError:
         _LOGGER.debug("Could not parse Reported_Time %r", raw)
         return None
+
+
+def _parse_slash_date(raw: str | None) -> date | None:
+    """Parse the MM/DD/YYYY strings the work zone layer publishes.
+
+    These are plain strings rather than ArcGIS date fields, so they need
+    parsing separately from the epoch-millisecond pickup dates below.
+    """
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw.strip(), "%m/%d/%Y").date()
+    except ValueError:
+        _LOGGER.debug("Could not parse work zone date %r", raw)
+        return None
+
+
+def _is_yes(value: Any) -> bool:
+    """The closure flags are free-text 'Yes' / 'No' strings."""
+    return str(value or "").strip().casefold() == "yes"
 
 
 def _epoch_ms_to_date(value: Any) -> date | None:
@@ -408,3 +464,73 @@ class OKCClient:
 
         incidents.sort(key=lambda item: item.distance_mi)
         return incidents
+
+    async def async_get_work_zones(
+        self,
+        home_lat: float,
+        home_lon: float,
+        radius_mi: float,
+        work_types: list[str] | None = None,
+    ) -> list[WorkZone]:
+        """Fetch active street work zones near the home location.
+
+        The city already prunes finished projects from this layer, so an
+        end date in the past is not filtered out here - if one ever appears
+        it is more likely a data entry slip than a stale row, and hiding it
+        would be worse than showing it.
+        """
+        features = await self._query(
+            LAYER_WORK_ZONES,
+            where="1=1",
+            outFields="*",
+            returnGeometry="true",
+            outSR=4326,
+        )
+
+        wanted = {t.casefold() for t in work_types} if work_types else None
+        zones: list[WorkZone] = []
+
+        for feature in features:
+            geometry = feature.get("geometry") or {}
+            attrs = feature.get("attributes") or {}
+            lon, lat = geometry.get("x"), geometry.get("y")
+            if lon is None or lat is None:
+                continue
+
+            work_type = str(attrs.get("Worktype") or "Unknown").strip()
+            if wanted is not None and not any(w in work_type.casefold() for w in wanted):
+                continue
+
+            distance = haversine_km(home_lat, home_lon, float(lat), float(lon)) * KM_TO_MILES
+            if distance > radius_mi:
+                continue
+
+            # Direction fields hold either "No" or a lane count like "NB: 1".
+            directions = [
+                value.strip()
+                for key in ("Northbound", "Southbound", "Eastbound", "Westbound")
+                if (value := str(attrs.get(key) or "").strip())
+                and value.casefold() != "no"
+            ]
+
+            zones.append(
+                WorkZone(
+                    uid=str(attrs.get("OBJECTID")),
+                    number=str(attrs.get("workzonenumber") or "").strip(),
+                    work_type=work_type,
+                    location=str(attrs.get("Worklocation") or "").strip(),
+                    start_date=_parse_slash_date(attrs.get("Startdate")),
+                    end_date=_parse_slash_date(attrs.get("Enddate")),
+                    road_closed=_is_yes(attrs.get("Roadclosure")),
+                    lane_closed=_is_yes(attrs.get("LaneClosure")),
+                    sidewalk_closed=_is_yes(attrs.get("SideWalkClosure")),
+                    right_of_way_work=_is_yes(attrs.get("RightOfWayWork")),
+                    directions=directions,
+                    latitude=float(lat),
+                    longitude=float(lon),
+                    distance_mi=round(distance, 2),
+                )
+            )
+
+        zones.sort(key=lambda item: item.distance_mi)
+        return zones

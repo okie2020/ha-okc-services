@@ -60,7 +60,8 @@ One device is created per address, with these entities:
 | `sensor.<address>_recycling_pickup_in` | Whole days until recycling pickup |
 | `sensor.<address>_bulky_waste_pickup_in` | Whole days until bulky waste pickup |
 | `sensor.<address>_nearby_emergency_responses` | Count of active incidents in radius |
-| `geo_location.*` | One transient marker per active incident |
+| `sensor.<address>_nearby_work_zones` | Count of active work zones in radius |
+| `geo_location.*` | One transient marker per active incident or work zone |
 
 Each pickup sensor carries `route`, `pickup_day` and `service_provider` attributes.
 
@@ -68,6 +69,15 @@ Incident markers are colour-coded by call type — orange for a non-injury accid
 red for an injury accident, dark red for fire, green for hazmat, blue for rescue and
 teal for medical. The icons are inline SVG, so nothing is fetched from the internet
 to draw your map.
+
+Work zone markers are colour-coded by what they block rather than by work type,
+because that is what matters when deciding whether to drive that way: dark red and a
+caution sign for a full road closure, orange for a lane closure, amber for a sidewalk
+closure, and slate for right-of-way work with nothing closed.
+
+The work zone count sensor carries `road_closures`, `lane_closures` and
+`sidewalk_closures` tallies, so an automation can react to a full closure appearing
+nearby without walking the list.
 
 > Exact entity IDs are derived from the matched address. Check
 > **Developer tools → States** after setup to get yours.
@@ -78,10 +88,15 @@ The incident map options are offered as the last step of initial setup, and can 
 changed at any time under **Settings → Devices & services → OKC Services → Configure**.
 
 - **Show emergency responses on the map** — turn the incident feed on or off.
-- **Radius around your home** — in **miles**, default 10.
+- **Radius for emergency responses** — in **miles**, default 10.
 - **Only show these call types** — leave empty for everything. Matching is partial,
   so `Fire` also matches `Fire: Elevator Emergency`, and `Accident` matches both
   `Injury Accident` and `Non-Injury Accident`.
+- **Show active work zones on the map** — turn the work zone feed on or off.
+- **Radius for work zones** — in **miles**, default 3. The City publishes around 190
+  work zones at once, so a tighter radius than the incident feed usually reads better.
+- **Only show these work types** — leave empty for everything. Matching is partial,
+  so `Street` also matches `Street/Sidewalk Repair`.
 
 The incident feed only carries City of Oklahoma City calls, so an address on the
 edge of the service area sees nothing within a few miles. If your map stays empty,
@@ -159,13 +174,18 @@ automation:
 | Bulky waste dates | `OpenData/Utilities` layer 10 — joined on `RouteNumber` |
 | Recycling dates | `OpenData/Utilities` layer 11 — joined on `MeterReadingUnit` |
 | Emergency responses | `OpenData/Public_Safety` layer 0 |
+| Active work zones | `OpenData/Transportation` layer 5 |
 
 Your coordinates are matched against the zone polygons with a point-in-polygon
 query. Recycling and bulky waste have published date tables that the integration
 joins on the route; trash has no date table because it is a simple weekly service,
 so those pickups are generated from the zone's `PICKUPDAY` weekday.
 
-Schedules refresh every 6 hours; the incident feed polls every 5 minutes.
+Schedules refresh every 6 hours, the incident feed polls every 5 minutes, and work
+zones hourly — they are dated projects rather than events.
+
+A single work zone number can cover several points along one project, so markers are
+keyed on the layer's `OBJECTID` and the `WZ-` number is carried as an attribute.
 
 ### Endpoint note
 

@@ -18,15 +18,21 @@ from .api import OKCClient
 from .const import (
     CONF_INCIDENT_RADIUS,
     CONF_INCIDENTS_ENABLED,
+    CONF_WORK_ZONES_ENABLED,
     DEFAULT_INCIDENTS_ENABLED,
+    DEFAULT_WORK_ZONES_ENABLED,
     KM_TO_MILES,
 )
-from .coordinator import OKCIncidentCoordinator, OKCScheduleCoordinator
+from .coordinator import (
+    OKCIncidentCoordinator,
+    OKCScheduleCoordinator,
+    OKCWorkZoneCoordinator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 BASE_PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.SENSOR]
-INCIDENT_PLATFORMS: list[Platform] = [Platform.GEO_LOCATION]
+MAP_PLATFORMS: list[Platform] = [Platform.GEO_LOCATION]
 
 
 @dataclass
@@ -35,6 +41,7 @@ class OKCRuntimeData:
 
     schedule: OKCScheduleCoordinator
     incidents: OKCIncidentCoordinator | None
+    work_zones: OKCWorkZoneCoordinator | None
     # Recorded at setup so unload tears down exactly what was set up, even if
     # the options changed in between.
     platforms: list[Platform] = field(default_factory=list)
@@ -69,14 +76,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: OKCConfigEntry) -> bool:
 
     platforms = list(BASE_PLATFORMS)
     incidents: OKCIncidentCoordinator | None = None
+    work_zones: OKCWorkZoneCoordinator | None = None
 
     if entry.options.get(CONF_INCIDENTS_ENABLED, DEFAULT_INCIDENTS_ENABLED):
         incidents = OKCIncidentCoordinator(hass, entry, client)
         await incidents.async_config_entry_first_refresh()
-        platforms += INCIDENT_PLATFORMS
+
+    if entry.options.get(CONF_WORK_ZONES_ENABLED, DEFAULT_WORK_ZONES_ENABLED):
+        work_zones = OKCWorkZoneCoordinator(hass, entry, client)
+        await work_zones.async_config_entry_first_refresh()
+
+    # Both feeds draw markers, so the platform is needed if either is on.
+    if incidents is not None or work_zones is not None:
+        platforms += MAP_PLATFORMS
 
     entry.runtime_data = OKCRuntimeData(
-        schedule=schedule, incidents=incidents, platforms=platforms
+        schedule=schedule,
+        incidents=incidents,
+        work_zones=work_zones,
+        platforms=platforms,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, platforms)

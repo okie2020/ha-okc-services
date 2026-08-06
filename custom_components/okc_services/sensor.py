@@ -17,7 +17,11 @@ from .const import (
     SERVICE_RECYCLE,
     SERVICE_TRASH,
 )
-from .coordinator import OKCIncidentCoordinator, OKCScheduleCoordinator
+from .coordinator import (
+    OKCIncidentCoordinator,
+    OKCScheduleCoordinator,
+    OKCWorkZoneCoordinator,
+)
 from .entity import okc_device_info
 
 SERVICES = (SERVICE_TRASH, SERVICE_RECYCLE, SERVICE_BULKY)
@@ -38,6 +42,9 @@ async def async_setup_entry(
 
     if runtime.incidents is not None:
         entities.append(OKCIncidentCountSensor(runtime.incidents, entry))
+
+    if runtime.work_zones is not None:
+        entities.append(OKCWorkZoneCountSensor(runtime.work_zones, entry))
 
     async_add_entities(entities)
 
@@ -160,4 +167,52 @@ class OKCIncidentCountSensor(CoordinatorEntity[OKCIncidentCoordinator], SensorEn
         if closest is not None:
             attrs["closest_distance_mi"] = closest.distance_mi
             attrs["closest_call_type"] = closest.call_type
+        return attrs
+
+
+class OKCWorkZoneCountSensor(CoordinatorEntity[OKCWorkZoneCoordinator], SensorEntity):
+    """Number of active work zones within the configured radius."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Nearby work zones"
+    _attr_attribution = ATTRIBUTION
+    _attr_icon = "mdi:traffic-cone"
+    _attr_native_unit_of_measurement = "zones"
+
+    def __init__(
+        self, coordinator: OKCWorkZoneCoordinator, entry: OKCConfigEntry
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_work_zone_count"
+        self._attr_device_info = okc_device_info(entry)
+
+    @property
+    def native_value(self) -> int:
+        return len(self.coordinator.data or [])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object]:
+        zones = self.coordinator.data or []
+        attrs: dict[str, object] = {
+            "work_zones": [
+                {
+                    "work_type": zone.work_type,
+                    "location": zone.location,
+                    "impact": zone.impact,
+                    "distance_mi": zone.distance_mi,
+                    "end_date": zone.end_date.isoformat() if zone.end_date else None,
+                    "latitude": zone.latitude,
+                    "longitude": zone.longitude,
+                }
+                for zone in zones
+            ],
+            # Counted separately so an automation can react to a full closure
+            # without walking the list.
+            "road_closures": sum(1 for zone in zones if zone.road_closed),
+            "lane_closures": sum(1 for zone in zones if zone.lane_closed),
+            "sidewalk_closures": sum(1 for zone in zones if zone.sidewalk_closed),
+        }
+        if zones:
+            attrs["closest_distance_mi"] = zones[0].distance_mi
+            attrs["closest_work_type"] = zones[0].work_type
         return attrs
