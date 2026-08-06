@@ -14,14 +14,31 @@ No API key or account is required.
 
 ## Installation
 
+### HACS (recommended)
+
+1. In Home Assistant go to **HACS → ⋮ → Custom repositories**.
+2. Add `https://github.com/braden2113/ha-okc-services` with type **Integration**.
+3. Find **OKC Services** in the HACS list and click **Download**.
+4. Restart Home Assistant.
+
+### Manual
+
 1. Copy the `custom_components/okc_services` folder into your Home Assistant
    `config/custom_components/` directory, so you end up with
    `config/custom_components/okc_services/manifest.json`.
 2. Restart Home Assistant.
-3. Go to **Settings → Devices & services → Add integration** and search for
+
+### Configuration
+
+1. Go to **Settings → Devices & services → Add integration** and search for
    **OKC Services**.
-4. Enter your street address (for example `200 N Walker Ave, Oklahoma City, OK 73102`)
+2. Enter your street address (for example `200 N Walker Ave, Oklahoma City, OK 73102`)
    and confirm the matched address on the next screen.
+
+Your address is geocoded once, at setup, by the public ArcGIS World Geocoding
+Service. Only the resulting coordinates are stored in your config entry, and
+they never leave your Home Assistant instance except as the point-in-polygon
+query sent to the City's public map services.
 
 If the address is outside every OKC collection zone, setup stops with a clear error
 rather than creating an empty calendar — service there is likely provided by another

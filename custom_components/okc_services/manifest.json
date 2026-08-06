@@ -1,11 +1,12 @@
 {
   "domain": "okc_services",
   "name": "OKC Services",
-  "codeowners": [],
+  "codeowners": ["@braden2113"],
   "config_flow": true,
-  "documentation": "https://data.okc.gov/",
+  "documentation": "https://github.com/braden2113/ha-okc-services",
   "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/braden2113/ha-okc-services/issues",
   "requirements": [],
   "version": "1.0.0"
 }
