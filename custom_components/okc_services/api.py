@@ -16,6 +16,7 @@ import aiohttp
 from .const import (
     AGOL_PROXY,
     ARCGIS_GEOCODE_URL,
+    KM_TO_MILES,
     LAYER_BULKY_DATES,
     LAYER_BULKY_ZONES,
     LAYER_EMERGENCY,
@@ -78,7 +79,7 @@ class Incident:
     reported_time: datetime | None
     latitude: float
     longitude: float
-    distance_km: float
+    distance_mi: float
 
 
 @dataclass
@@ -361,7 +362,7 @@ class OKCClient:
         self,
         home_lat: float,
         home_lon: float,
-        radius_km: float,
+        radius_mi: float,
         call_types: list[str] | None = None,
     ) -> list[Incident]:
         """Fetch current fire and police responses near the home location."""
@@ -387,8 +388,8 @@ class OKCClient:
             if wanted is not None and not any(w in call_type.casefold() for w in wanted):
                 continue
 
-            distance = haversine_km(home_lat, home_lon, float(lat), float(lon))
-            if distance > radius_km:
+            distance = haversine_km(home_lat, home_lon, float(lat), float(lon)) * KM_TO_MILES
+            if distance > radius_mi:
                 continue
 
             object_id = attrs.get("ObjectID")
@@ -401,9 +402,9 @@ class OKCClient:
                     reported_time=_parse_reported_time(attrs.get("Reported_Time")),
                     latitude=float(lat),
                     longitude=float(lon),
-                    distance_km=round(distance, 2),
+                    distance_mi=round(distance, 2),
                 )
             )
 
-        incidents.sort(key=lambda item: item.distance_km)
+        incidents.sort(key=lambda item: item.distance_mi)
         return incidents

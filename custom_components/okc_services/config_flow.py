@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -63,10 +64,49 @@ INCIDENT_TYPE_CHOICES = [
 ]
 
 
+def incident_options_schema(options: Mapping[str, Any]) -> vol.Schema:
+    """Build the incident options schema, defaulted from existing options.
+
+    Shared so the initial setup and the later options flow always offer the
+    same choices.
+    """
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_INCIDENTS_ENABLED,
+                default=options.get(CONF_INCIDENTS_ENABLED, DEFAULT_INCIDENTS_ENABLED),
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_INCIDENT_RADIUS,
+                default=options.get(CONF_INCIDENT_RADIUS, DEFAULT_INCIDENT_RADIUS),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0.5,
+                    max=30,
+                    step=0.5,
+                    unit_of_measurement="mi",
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_INCIDENT_TYPES,
+                default=list(options.get(CONF_INCIDENT_TYPES) or []),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=INCIDENT_TYPE_CHOICES,
+                    multiple=True,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+    )
+
+
 class OKCConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the OKC Services config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialise the flow."""
@@ -116,20 +156,7 @@ class OKCConfigFlow(ConfigFlow, domain=DOMAIN):
         geocode = self._geocode
 
         if user_input is not None:
-            return self.async_create_entry(
-                title=geocode.matched_address,
-                data={
-                    CONF_ADDRESS: geocode.matched_address,
-                    CONF_MATCHED_ADDRESS: geocode.matched_address,
-                    CONF_LATITUDE: geocode.latitude,
-                    CONF_LONGITUDE: geocode.longitude,
-                },
-                options={
-                    CONF_INCIDENTS_ENABLED: DEFAULT_INCIDENTS_ENABLED,
-                    CONF_INCIDENT_RADIUS: DEFAULT_INCIDENT_RADIUS,
-                    CONF_INCIDENT_TYPES: [],
-                },
-            )
+            return await self.async_step_options()
 
         return self.async_show_form(
             step_id="confirm",
@@ -139,6 +166,29 @@ class OKCConfigFlow(ConfigFlow, domain=DOMAIN):
                 "latitude": f"{geocode.latitude:.6f}",
                 "longitude": f"{geocode.longitude:.6f}",
             },
+        )
+
+    async def async_step_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer the incident map options as part of initial setup."""
+        assert self._geocode is not None
+        geocode = self._geocode
+
+        if user_input is not None:
+            return self.async_create_entry(
+                title=geocode.matched_address,
+                data={
+                    CONF_ADDRESS: geocode.matched_address,
+                    CONF_MATCHED_ADDRESS: geocode.matched_address,
+                    CONF_LATITUDE: geocode.latitude,
+                    CONF_LONGITUDE: geocode.longitude,
+                },
+                options=user_input,
+            )
+
+        return self.async_show_form(
+            step_id="options", data_schema=incident_options_schema({})
         )
 
     @staticmethod
@@ -158,41 +208,7 @@ class OKCOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
-        options = self.config_entry.options
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_INCIDENTS_ENABLED,
-                    default=options.get(
-                        CONF_INCIDENTS_ENABLED, DEFAULT_INCIDENTS_ENABLED
-                    ),
-                ): BooleanSelector(),
-                vol.Required(
-                    CONF_INCIDENT_RADIUS,
-                    default=options.get(
-                        CONF_INCIDENT_RADIUS, DEFAULT_INCIDENT_RADIUS
-                    ),
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=0.5,
-                        max=50,
-                        step=0.5,
-                        unit_of_measurement="km",
-                        mode=NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Optional(
-                    CONF_INCIDENT_TYPES,
-                    default=list(options.get(CONF_INCIDENT_TYPES) or []),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=INCIDENT_TYPE_CHOICES,
-                        multiple=True,
-                        custom_value=True,
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=incident_options_schema(self.config_entry.options),
         )
-
-        return self.async_show_form(step_id="init", data_schema=schema)

@@ -15,7 +15,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import OKCClient
-from .const import CONF_INCIDENTS_ENABLED, DEFAULT_INCIDENTS_ENABLED
+from .const import (
+    CONF_INCIDENT_RADIUS,
+    CONF_INCIDENTS_ENABLED,
+    DEFAULT_INCIDENTS_ENABLED,
+    KM_TO_MILES,
+)
 from .coordinator import OKCIncidentCoordinator, OKCScheduleCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +41,22 @@ class OKCRuntimeData:
 
 
 type OKCConfigEntry = ConfigEntry[OKCRuntimeData]
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: OKCConfigEntry) -> bool:
+    """Migrate an old config entry."""
+    if entry.version == 1:
+        # Version 1 stored the incident radius in kilometres. Convert it so an
+        # existing setup keeps covering the same ground rather than silently
+        # shrinking to 62% of the area the user picked.
+        options = dict(entry.options)
+        if (radius := options.get(CONF_INCIDENT_RADIUS)) is not None:
+            options[CONF_INCIDENT_RADIUS] = round(float(radius) * KM_TO_MILES, 1)
+
+        hass.config_entries.async_update_entry(entry, options=options, version=2)
+        _LOGGER.debug("Migrated OKC Services entry to version 2 (radius now miles)")
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: OKCConfigEntry) -> bool:

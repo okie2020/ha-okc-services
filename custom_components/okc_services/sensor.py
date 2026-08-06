@@ -145,7 +145,7 @@ class OKCIncidentCountSensor(CoordinatorEntity[OKCIncidentCoordinator], SensorEn
                 {
                     "call_type": incident.call_type,
                     "address": incident.address,
-                    "distance_km": incident.distance_km,
+                    "distance_mi": incident.distance_mi,
                     "reported_time": (
                         incident.reported_time.isoformat()
                         if incident.reported_time
@@ -158,6 +158,6 @@ class OKCIncidentCountSensor(CoordinatorEntity[OKCIncidentCoordinator], SensorEn
             ]
         }
         if closest is not None:
-            attrs["closest_distance_km"] = closest.distance_km
+            attrs["closest_distance_mi"] = closest.distance_mi
             attrs["closest_call_type"] = closest.call_type
         return attrs

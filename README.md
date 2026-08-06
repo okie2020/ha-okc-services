@@ -34,6 +34,8 @@ No API key or account is required.
    **OKC Services**.
 2. Enter your street address (for example `200 N Walker Ave, Oklahoma City, OK 73102`)
    and confirm the matched address on the next screen.
+3. Choose your emergency map options — whether to show incidents at all, the radius
+   in miles, and any call-type filter. All three can be changed later.
 
 Your address is geocoded once, at setup, by the public ArcGIS World Geocoding
 Service. Only the resulting coordinates are stored in your config entry, and
@@ -67,13 +69,19 @@ Each pickup sensor carries `route`, `pickup_day` and `service_provider` attribut
 
 ## Options
 
-**Settings → Devices & services → OKC Services → Configure**
+The incident map options are offered as the last step of initial setup, and can be
+changed at any time under **Settings → Devices & services → OKC Services → Configure**.
 
 - **Show emergency responses on the map** — turn the incident feed on or off.
-- **Radius around your home** — default 5 km.
+- **Radius around your home** — in **miles**, default 10.
 - **Only show these call types** — leave empty for everything. Matching is partial,
   so `Fire` also matches `Fire: Elevator Emergency`, and `Accident` matches both
   `Injury Accident` and `Non-Injury Accident`.
+
+The incident feed only carries City of Oklahoma City calls, so an address on the
+edge of the service area sees nothing within a few miles. If your map stays empty,
+raise the radius before assuming it is broken — 10 to 20 miles is a reasonable
+starting point for outlying addresses.
 
 ## Dashboard
 

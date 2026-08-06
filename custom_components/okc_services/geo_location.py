@@ -59,7 +59,7 @@ class OKCIncidentEvent(CoordinatorEntity[OKCIncidentCoordinator], GeolocationEve
     _attr_should_poll = False
     _attr_source = SOURCE
     _attr_attribution = ATTRIBUTION
-    _attr_unit_of_measurement = UnitOfLength.KILOMETERS
+    _attr_unit_of_measurement = UnitOfLength.MILES
     _attr_icon = "mdi:car-emergency"
 
     def __init__(self, coordinator: OKCIncidentCoordinator, uid: str) -> None:
@@ -84,15 +84,20 @@ class OKCIncidentEvent(CoordinatorEntity[OKCIncidentCoordinator], GeolocationEve
 
     @property
     def name(self) -> str | None:
+        """Return the call type alone.
+
+        The map card builds its marker label from the first letter of each
+        word in this name, so anything appended here (an address, or a
+        separator like an em dash) leaks into the badge as noise. Call type
+        only yields a clean "NA" or "IA"; the address stays an attribute.
+        """
         incident = self._incident
-        if incident is None:
-            return None
-        return f"{incident.call_type} — {incident.address}" if incident.address else incident.call_type
+        return incident.call_type if incident else None
 
     @property
     def distance(self) -> float | None:
         incident = self._incident
-        return incident.distance_km if incident else None
+        return incident.distance_mi if incident else None
 
     @property
     def latitude(self) -> float | None:

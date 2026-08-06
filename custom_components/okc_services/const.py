@@ -15,8 +15,12 @@ CONF_INCIDENT_RADIUS: Final = "incident_radius"
 CONF_INCIDENT_TYPES: Final = "incident_types"
 CONF_INCIDENTS_ENABLED: Final = "incidents_enabled"
 
-DEFAULT_INCIDENT_RADIUS: Final = 5.0  # kilometres
+DEFAULT_INCIDENT_RADIUS: Final = 10.0  # miles
 DEFAULT_INCIDENTS_ENABLED: Final = True
+
+# Distances are computed on a sphere in kilometres, then reported in miles
+# because this integration only ever serves Oklahoma City addresses.
+KM_TO_MILES: Final = 0.621371
 
 # City of Oklahoma City publishes its open data through ArcGIS Online. The
 # public REST proxy path embeds the AGOL item id as the "server" segment, so
