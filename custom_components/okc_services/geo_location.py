@@ -14,6 +14,7 @@ from . import OKCConfigEntry
 from .api import Incident
 from .const import ATTRIBUTION
 from .coordinator import OKCIncidentCoordinator
+from .icons import incident_picture
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,13 +87,22 @@ class OKCIncidentEvent(CoordinatorEntity[OKCIncidentCoordinator], GeolocationEve
     def name(self) -> str | None:
         """Return the call type alone.
 
-        The map card builds its marker label from the first letter of each
-        word in this name, so anything appended here (an address, or a
-        separator like an em dash) leaks into the badge as noise. Call type
-        only yields a clean "NA" or "IA"; the address stays an attribute.
+        This is what the map falls back to if the picture below ever fails to
+        render, and it is the label shown everywhere else in the UI, so it is
+        kept free of the address and of separators like an em dash.
         """
         incident = self._incident
         return incident.call_type if incident else None
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Return a colour-coded icon for the marker.
+
+        The map only accepts initials or a picture, never an mdi icon, so the
+        icon is supplied as an inline SVG data URI.
+        """
+        incident = self._incident
+        return incident_picture(incident.call_type) if incident else None
 
     @property
     def distance(self) -> float | None:

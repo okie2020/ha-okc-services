@@ -64,6 +64,11 @@ One device is created per address, with these entities:
 
 Each pickup sensor carries `route`, `pickup_day` and `service_provider` attributes.
 
+Incident markers are colour-coded by call type — orange for a non-injury accident,
+red for an injury accident, dark red for fire, green for hazmat, blue for rescue and
+teal for medical. The icons are inline SVG, so nothing is fetched from the internet
+to draw your map.
+
 > Exact entity IDs are derived from the matched address. Check
 > **Developer tools → States** after setup to get yours.
 
